@@ -1,0 +1,23 @@
+/target
+
+# Python virtual environments
+.venv/
+.venv312/
+venv/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Kivy local runtime files
+.kivy/
+
+# UI dependencies/build output
+ui/node_modules/
+ui/dist/
+
+# OS/IDE noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,28 @@
+[package]
+name = "maturin_deno_jsx_kivy"
+version = "0.1.0"
+edition = "2024"
+description = "Research scaffold for JSX -> Kivy orchestration with tracing-first runtime architecture"
+
+[lib]
+name = "kivy_jsx_runtime"
+crate-type = ["rlib", "cdylib"]
+
+[features]
+default = []
+deno-runtime = ["dep:deno_core"]
+python-bridge = ["dep:pyo3"]
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Optional foundations for POLYGLOT_RUNTIME_INTEGRATION_SPEC.
+deno_core = { version = "0.311", optional = true }
+pyo3 = { version = "0.22", optional = true, features = ["extension-module", "abi3-py39"] }

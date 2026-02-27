@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.6,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "kivy_jsx_runtime"
+version = "0.1.0"
+description = "Research wheel for JSX-like declarative evaluation and Kivy widget spec resolution"
+requires-python = ">=3.9"
+dependencies = []
+
+[tool.maturin]
+features = ["python-bridge"]
+module-name = "kivy_jsx_runtime"
