@@ -1,84 +1,129 @@
-# maturin_deno_jsx_kivy (research scaffold)
+# maturin_deno_jsx_kivy
 
-This repository now contains a **research-first Rust architecture scaffold** for the concepts you asked about:
+Bridging **React-style declarative UI ideas** and **native Kivy widgets** through a Rust core (PyO3 + maturin).
 
-- `DECLARATIVE_INTERFACE_MAPPING_SPEC` (JSX-like node -> Kivy-like widget spec)
-- `ABSTRACT_SYNTAX_EVALUATION_SPEC` (`_eval_jsx_expression` boundary)
-- `DYNAMIC_COMPONENT_RESOLUTION_SPEC` (`_create_custom_widget` boundary)
-- `POLYGLOT_RUNTIME_INTEGRATION_SPEC` (foundation hooks for `deno_core` + `pyo3`)
-- `RUNTIME_OBSERVABILITY_SPEC` (`tracing` + `tracing-subscriber`)
+> Status: research/prototype with a production-oriented public API surface in progress.
 
-## Current module map
+---
 
-- `src/specs.rs`
-  - `DeclarativeNode`
-  - `AstEvaluationResult`
-  - `RuntimeResearchError`
-  - `JsxExpressionEvaluator` trait
-  - `NoopJsxEvaluator` placeholder implementation
+## Why this project exists (for the Kivy community)
 
-- `src/bridge.rs`
-  - `WidgetSpec`
-  - `DynamicComponentResolver` trait
-  - `NoopKivyResolver` placeholder mapping (`View -> BoxLayout`, etc.)
+Kivy developers often want:
 
-- `src/runtime.rs`
-  - `RuntimeConfig`
-  - `ResearchRuntimeEngine` orchestrator
+- modern declarative component authoring,
+- stronger tooling/type support,
+- and clean interop with Python-native rendering.
 
-- `src/main.rs`
-  - async demo entrypoint with tracing init
-  - executes evaluate -> resolve flow and prints resulting widget tree JSON
+This project explores exactly that: a pipeline where a JS/TS bundle is evaluated by a Rust runtime, converted into a widget spec tree, and materialized as real Kivy widgets in Python.
 
-## Cargo features (foundation only)
+The long-term goal is **better developer ergonomics without losing Kivy-native rendering and control**.
 
-- `deno-runtime` enables optional `deno_core`
-- `python-bridge` enables optional `pyo3`
+---
 
-These are intentionally optional so the scaffold remains buildable while you iterate on integration design.
+## High-level architecture
 
-## Run
+1. **UI authoring layer (React/TS + react-reconciler)**
+   - Located in `ui/`
+   - Produces `ui/dist/app.bundle.js`
+
+2. **Rust runtime layer (`kivy_jsx_runtime`)**
+   - Evaluates payload and produces a normalized widget specification tree
+   - Exposes a Python module via PyO3
+
+3. **Python + Kivy bridge layer (`main.py`)**
+   - Loads bundle
+   - Calls Rust engine (`JSXRuntimeEngine.mount_application`)
+   - Dynamically resolves Kivy classes and mounts widgets
+
+---
+
+## Repository layout
+
+- `src/specs.rs` — declarative AST/result/error contracts
+- `src/bridge.rs` — `WidgetSpec`, validation, JSON conversions, resolver trait
+- `src/runtime.rs` — orchestration API (`evaluate_to_ast`, `evaluate_and_resolve`, JSON helpers)
+- `src/python_bridge.rs` — PyO3 module/class exposed to Python
+- `ui/` — Vite + React + reconciler bundle source
+- `tools/gen_definitions.py` — AST scanner that generates `ui/src/global.d.ts` from installed Kivy
+- `main.py` — runtime Kivy app launcher using autonomous widget discovery
+
+---
+
+## Prerequisites (Windows)
+
+- Rust toolchain
+- Python 3.12 (recommended for Kivy on Windows)
+- `pnpm`
+- Kivy dependencies installable in your Python environment
+
+---
+
+## Quick start
+
+### 1) Build UI bundle
 
 ```bash
-cargo run
+pnpm --dir c:\projects\maturin_deno_jsx_kivy\ui install
+pnpm --dir c:\projects\maturin_deno_jsx_kivy\ui build
 ```
 
-You should see tracing logs plus a JSON output of a resolved widget tree.
-
-## Build Python wheel (maturin)
+### 2) Build Python wheel from Rust
 
 ```bash
-maturin build --release
+python -m maturin build --release
 ```
 
-Wheel artifacts will be created in `target/wheels/`.
-
-Install one wheel locally:
+### 3) Install into project venv
 
 ```bash
-pip install target/wheels/kivy_jsx_runtime-0.1.0-*.whl
+c:\projects\maturin_deno_jsx_kivy\.venv312\Scripts\python.exe -m pip install --force-reinstall c:\projects\maturin_deno_jsx_kivy\target\wheels\kivy_jsx_runtime-0.1.0-cp39-abi3-win_amd64.whl
 ```
 
-## Consume bundled React output from Python
+### 4) Run Kivy app
 
-```python
-import os
-from kivy_jsx_runtime import JSXRuntimeEngine
-
-engine = JSXRuntimeEngine()
-bundle_path = os.path.join(os.getcwd(), "dist", "app.bundle.js")
-
-with open(bundle_path, "r", encoding="utf-8") as f:
-    js_payload = f.read()
-
-widget_tree_json = engine.mount_application(js_payload)
-print(widget_tree_json)
+```bash
+c:\projects\maturin_deno_jsx_kivy\.venv312\Scripts\python.exe c:\projects\maturin_deno_jsx_kivy\main.py
 ```
 
-This demonstrates the intended pipeline:
+Optional auto-exit for smoke tests:
 
-1. React build outputs `dist/app.bundle.js`
-2. Python loads bundle text
-3. Rust bridge evaluates + resolves to widget-spec JSON
-4. Python/Kivy layer can map the JSON tree to native widgets
-# maturin_deno_jsx_kivy 
+```bash
+set APP_AUTO_EXIT_SECONDS=5 && c:\projects\maturin_deno_jsx_kivy\.venv312\Scripts\python.exe c:\projects\maturin_deno_jsx_kivy\main.py
+```
+
+---
+
+## Type generation for better TS DX
+
+The project auto-generates `ui/src/global.d.ts` from installed Kivy source using Python AST scanning:
+
+```bash
+pnpm --dir c:\projects\maturin_deno_jsx_kivy\ui run gen:types
+```
+
+This improves IntelliSense for JSX-like Kivy tags and props.
+
+---
+
+## Current limitations
+
+- JSX/JS payload evaluation is still a placeholder strategy (research mode).
+- Event callback semantics across JS ↔ Rust ↔ Python are not production-complete yet.
+- The dynamic resolver assumes module/class naming conventions for many widgets.
+
+---
+
+## Contributing
+
+Issues and PRs are welcome—especially from Kivy developers interested in:
+
+- reconciler host config design,
+- dynamic widget/event binding,
+- perf profiling across FFI boundaries,
+- and robust production API hardening.
+
+---
+
+## License
+
+MIT (recommended; add a `LICENSE` file if you want this explicitly enforced in the repo).
